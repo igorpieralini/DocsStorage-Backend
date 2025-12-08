@@ -1,7 +1,11 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 
 file_bp = Blueprint("file", __name__)
 
-@file_bp.route("/upload", methods=["POST"])
+@file_bp.get("/")
+def list_files():
+    return {"files": []}, 200
+
+@file_bp.post("/upload")
 def upload_file():
-    return jsonify({"message": "arquivo recebido"})
+    return {"message": "Upload em desenvolvimento"}, 501
