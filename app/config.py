@@ -1,4 +1,12 @@
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Carrega .env localizado na pasta 'backend' para facilitar desenvolvimento local
+BASE_DIR = Path(__file__).resolve().parent.parent
+env_path = BASE_DIR / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
