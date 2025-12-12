@@ -39,6 +39,7 @@ def login():
         }, 400
     
     user = User.query.filter_by(email=email).first()
+
     if not user:
         print("❌ Usuário não encontrado no banco")
         return {
@@ -66,12 +67,6 @@ def login():
 
 @auth_bp.post('/google-callback')
 def google_callback():
-    # Prints de debug serão feitos após obter profile e user
-    """Recebe o 'code' do frontend, troca por token no Google, obtém perfil
-    e cria/obtém usuário local retornando dados e um JWT.
-    Espera JSON: { code: string, redirectUri: string }
-    """
-
     data = request.json or {}
     import datetime
     code = data.get('code')
@@ -102,10 +97,10 @@ def google_callback():
     }
     
 
-
     try:
         token_resp = requests.post(token_url, data=token_payload, timeout=10)
         if token_resp.status_code == 400:
+
             # Tenta extrair erro específico do Google
             try:
                 err_json = token_resp.json()
@@ -114,8 +109,10 @@ def google_callback():
                     return {"success": False, "message": "Código expirado, já utilizado ou inválido. Faça login novamente."}, 400
             except Exception:
                 pass
+
         token_resp.raise_for_status()
         tokens = token_resp.json()
+
     except Exception as e:
         current_app.logger.exception('Erro ao trocar código por token no Google')
         return {"success": False, "message": "Erro ao trocar código por token", "detail": str(e)}, 502
@@ -126,10 +123,12 @@ def google_callback():
 
     # Obter informações do usuário
     userinfo_url = 'https://openidconnect.googleapis.com/v1/userinfo'
+
     try:
         userinfo_resp = requests.get(userinfo_url, headers={'Authorization': f'Bearer {access_token}'}, timeout=10)
         userinfo_resp.raise_for_status()
         profile = userinfo_resp.json()
+
     except Exception as e:
         current_app.logger.exception('Erro ao obter perfil do Google')
         return {"success": False, "message": "Erro ao obter perfil do Google", "detail": str(e)}, 502
@@ -145,10 +144,9 @@ def google_callback():
     # Busca ou cria usuário local
     user = User.query.filter_by(email=email).first()
     if not user:
-        # Gera username simples a partir do nome
         username = name.replace(' ', '').lower()[:50]
-        # Garantir uniqueness simples
         base_username = username
+
         suffix = 1
         while User.query.filter_by(username=username).first():
             username = f"{base_username}{suffix}"
