@@ -7,6 +7,8 @@ class User(db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(128))
+    google_id = db.Column(db.String(64), unique=True)
+    profile_picture = db.Column(db.String(255))
 
     def set_password(self, password):
         self.password = password
