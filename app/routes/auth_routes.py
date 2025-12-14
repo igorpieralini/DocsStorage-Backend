@@ -4,8 +4,34 @@ from ..extensions import db
 import os
 import requests
 from flask_jwt_extended import create_access_token
+from app.services.auth_register_service import register_user
+from app.services.auth_login_service import authenticate_user
 
 auth_bp = Blueprint("auth", __name__)
+
+@auth_bp.post("/register")
+def register():
+    
+    if not request.json:
+        return {"success": False, "message": "Dados JSON são obrigatórios", "error_type": "no_data"}, 400
+    
+    data = request.json
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+    user, error = register_user(username, email, password)
+
+    if error:
+        return {"success": False, "message": error, "error_type": "register_failed"}, 409
+    
+    token = create_access_token(identity=user.id)
+
+    return {
+        "success": True,
+        "message": "Conta criada com sucesso",
+        "user": {"id": user.id, "username": user.username, "email": user.email},
+        "token": token
+    }, 201
 
 @auth_bp.post("/login")
 
@@ -51,7 +77,6 @@ def login():
     senha_ok = user.check_password(password)
     
     if not senha_ok:
-        print("❌ Senha incorreta")
         return {
             "success": False, 
             "message": "Senha incorreta",
@@ -97,27 +122,24 @@ def google_callback():
     }
     
 
-    try:
-        token_resp = requests.post(token_url, data=token_payload, timeout=10)
-        if token_resp.status_code == 400:
+    token_resp = requests.post(token_url, data=token_payload, timeout=10)
+    if token_resp.status_code == 400:
 
-            # Tenta extrair erro específico do Google
-            try:
-                err_json = token_resp.json()
-                if err_json.get('error') == 'invalid_grant':
-                    # invalid_grant pode indicar code expirado/já usado ou redirect_uri incorreto
-                    return {"success": False, "message": "Código expirado, já utilizado ou inválido. Faça login novamente."}, 400
-            except Exception:
-                pass
+        # Tenta extrair erro específico do Google
+        try:
+            err_json = token_resp.json()
+            if err_json.get('error') == 'invalid_grant':
+                # invalid_grant pode indicar code expirado/já usado ou redirect_uri incorreto
+                return {"success": False, "message": "Código expirado, já utilizado ou inválido. Faça login novamente."}, 400
+        except Exception:
+            pass
 
-        token_resp.raise_for_status()
-        tokens = token_resp.json()
+    token_resp.raise_for_status()
+    tokens = token_resp.json()
 
-    except Exception as e:
-        current_app.logger.exception('Erro ao trocar código por token no Google')
-        return {"success": False, "message": "Erro ao trocar código por token", "detail": str(e)}, 502
 
     access_token = tokens.get('access_token')
+
     if not access_token:
         return {"success": False, "message": "Token de acesso não recebido do Google", "tokens": tokens}, 502
 

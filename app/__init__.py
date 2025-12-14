@@ -3,6 +3,7 @@ from .config import Config
 from .extensions import db, jwt, cors
 from .routes.auth_routes import auth_bp
 from .routes.file_routes import file_bp
+from .services.storage_service import StorageService
 
 def create_app():
     app = Flask(__name__)
@@ -18,5 +19,8 @@ def create_app():
     @app.route("/")
     def index():
         return {"status": "ok", "message": "DocsStorage API"}
+    
+    with app.app_context():
+        StorageService.initialize_storage()
 
     return app

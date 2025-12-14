@@ -13,3 +13,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:Igorpro2020%23%40%23@localhost:3306/docsstorage"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-key-change-in-production")
+    
+    STORAGE_PATH = Path(os.getenv("STORAGE_PATH", "C:/Users/igorp/Documents/Storage"))
+    MAX_STORAGE_SIZE = 10 * 1024 * 1024 * 1024  # 10GB em bytes
+    MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB por arquivo
