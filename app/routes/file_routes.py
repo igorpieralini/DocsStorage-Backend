@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.storage_service import StorageService
 from werkzeug.utils import secure_filename
 import os
+from pathlib import Path
 
 file_bp = Blueprint("file", __name__)
 
@@ -133,3 +134,90 @@ def delete_file(filename):
         "success": True,
         "message": message
     }, 200
+
+
+@file_bp.post('/mkdir')
+@jwt_required()
+def create_folder():
+    """Cria uma nova pasta no caminho informado"""
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    name = data.get('name')
+    relative_path = data.get('path', '')
+
+    if not name or not name.strip():
+        return {"success": False, "message": "Nome inválido"}, 400
+
+    # sanitize name
+    safe_name = secure_filename(name)
+    try:
+        target = str(Path(relative_path) / safe_name)
+        # StorageService.get_user_directory will create the directory
+        StorageService.get_user_directory(user_id, target)
+    except ValueError:
+        return {"success": False, "message": "Caminho inválido"}, 400
+
+    return {"success": True, "message": "Pasta criada com sucesso", "path": target}, 201
+
+
+@file_bp.post('/create')
+@jwt_required()
+def create_file_endpoint():
+    """Cria um arquivo vazio no caminho informado"""
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    name = data.get('name')
+    relative_path = data.get('path', '')
+
+    if not name or not name.strip():
+        return {"success": False, "message": "Nome inválido"}, 400
+
+    safe_name = secure_filename(name)
+    try:
+        dir_path = StorageService.get_user_directory(user_id, relative_path)
+    except ValueError:
+        return {"success": False, "message": "Caminho inválido"}, 400
+
+    file_path = Path(dir_path) / safe_name
+    if file_path.exists():
+        return {"success": False, "message": "Arquivo já existe"}, 400
+
+    try:
+        # create empty file
+        file_path.touch()
+        return {"success": True, "message": "Arquivo criado", "filename": safe_name}, 201
+    except Exception as e:
+        return {"success": False, "message": f"Erro ao criar arquivo: {str(e)}"}, 500
+
+
+@file_bp.post('/move')
+@jwt_required()
+def move_file():
+    """Move/renomeia um arquivo para um destino informado"""
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    filename = data.get('filename')
+    target_path = data.get('target_path', '')
+
+    if not filename:
+        return {"success": False, "message": "Filename é obrigatório"}, 400
+
+    # source path
+    src = StorageService.get_file_path(user_id, filename)
+    if not src:
+        return {"success": False, "message": "Arquivo não encontrado"}, 404
+
+    try:
+        dest_dir = StorageService.get_user_directory(user_id, target_path)
+    except ValueError:
+        return {"success": False, "message": "Caminho de destino inválido"}, 400
+
+    dest = Path(dest_dir) / filename
+    if dest.exists():
+        return {"success": False, "message": "Arquivo de destino já existe"}, 400
+
+    try:
+        src.replace(dest)
+        return {"success": True, "message": "Arquivo movido"}, 200
+    except Exception as e:
+        return {"success": False, "message": f"Erro ao mover arquivo: {str(e)}"}, 500
