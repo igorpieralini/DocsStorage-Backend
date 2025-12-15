@@ -24,7 +24,7 @@ def register():
     if error:
         return {"success": False, "message": error, "error_type": "register_failed"}, 409
     
-    token = create_access_token(identity=user.id)
+    token = create_access_token(identity=str(user.id))
 
     return {
         "success": True,
@@ -83,10 +83,13 @@ def login():
             "error_type": "invalid_password"
         }, 401
     
+    token = create_access_token(identity=str(user.id))
+    
     return {
         "success": True, 
         "message": "Login realizado com sucesso",
-        "user": {"id": user.id, "username": user.username, "email": user.email}
+        "user": {"id": user.id, "username": user.username, "email": user.email},
+        "token": token
     }, 200
 
 
@@ -190,7 +193,7 @@ def google_callback():
             db.session.commit()
 
     # Gera JWT
-    access_jwt = create_access_token(identity=user.id)
+    access_jwt = create_access_token(identity=str(user.id))
 
     response_dict = {
         "success": True,

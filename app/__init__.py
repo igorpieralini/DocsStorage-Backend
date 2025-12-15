@@ -20,6 +20,7 @@ def create_app():
     def index():
         return {"status": "ok", "message": "DocsStorage API"}
     
+    # Inicializa o storage ao iniciar a aplicação (cria pastas para todos os usuários)
     with app.app_context():
         StorageService.initialize_storage()
 

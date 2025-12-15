@@ -15,5 +15,6 @@ class Config:
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-key-change-in-production")
     
     STORAGE_PATH = Path(os.getenv("STORAGE_PATH", "C:/Users/igorp/Documents/Storage"))
-    MAX_STORAGE_SIZE = 10 * 1024 * 1024 * 1024  # 10GB em bytes
+    MAX_STORAGE_SIZE = 10 * 1024 * 1024 * 1024  # 10GB total (todos os usuários)
+    MAX_USER_STORAGE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB por usuário
     MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB por arquivo

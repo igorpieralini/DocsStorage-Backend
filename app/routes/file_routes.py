@@ -9,34 +9,51 @@ file_bp = Blueprint("file", __name__)
 @file_bp.get("/")
 @jwt_required()
 def list_files():
-    """Lista todos os arquivos do usuário"""
+    """Lista arquivos e pastas do usuário no caminho informado"""
     user_id = get_jwt_identity()
-    files = StorageService.list_user_files(user_id)
+    relative_path = request.args.get('path', '')
+
+    try:
+        entries = StorageService.list_user_entries(user_id, relative_path)
+    except ValueError:
+        return {
+            "success": False,
+            "message": "Caminho inválido"
+        }, 400
     
     return {
         "success": True,
-        "files": files,
-        "count": len(files)
+        "items": entries,
+        "count": len(entries),
+        "path": relative_path
     }, 200
 
 @file_bp.get("/storage-info")
 @jwt_required()
 def storage_info():
-    """Retorna informações sobre o storage"""
-    info = StorageService.get_storage_info()
+    """Retorna informações sobre o storage do usuário"""
+    user_id = get_jwt_identity()
+    user_info = StorageService.get_user_storage_info(user_id)
+    global_info = StorageService.get_storage_info()
     
     return {
         "success": True,
-        "storage": {
-            "used_bytes": info['used'],
-            "used_mb": round(info['used'] / (1024 * 1024), 2),
-            "used_gb": round(info['used'] / (1024 * 1024 * 1024), 2),
-            "max_bytes": info['max'],
-            "max_gb": round(info['max'] / (1024 * 1024 * 1024), 2),
-            "available_bytes": info['available'],
-            "available_gb": round(info['available'] / (1024 * 1024 * 1024), 2),
-            "percentage": info['percentage'],
-            "files_count": info['files_count']
+        "user_storage": {
+            "used_bytes": user_info['used'],
+            "used_mb": round(user_info['used'] / (1024 * 1024), 2),
+            "used_gb": round(user_info['used'] / (1024 * 1024 * 1024), 2),
+            "max_bytes": user_info['max'],
+            "max_gb": round(user_info['max'] / (1024 * 1024 * 1024), 2),
+            "available_bytes": user_info['available'],
+            "available_gb": round(user_info['available'] / (1024 * 1024 * 1024), 2),
+            "percentage": user_info['percentage'],
+            "files_count": user_info['files_count']
+        },
+        "global_storage": {
+            "used_bytes": global_info['used'],
+            "used_gb": round(global_info['used'] / (1024 * 1024 * 1024), 2),
+            "max_gb": round(global_info['max'] / (1024 * 1024 * 1024), 2),
+            "percentage": global_info['percentage']
         }
     }, 200
 
