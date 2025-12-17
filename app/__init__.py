@@ -3,6 +3,7 @@ from .config import Config
 from .extensions import db, jwt, cors
 from .routes.auth_routes import auth_bp
 from .routes.file_routes import file_bp
+from .routes.google_drive_routes import google_drive_bp
 from .services.storage_service import StorageService
 
 def create_app():
@@ -15,6 +16,7 @@ def create_app():
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(file_bp, url_prefix="/api/files")
+    app.register_blueprint(google_drive_bp)
 
     @app.route("/")
     def index():

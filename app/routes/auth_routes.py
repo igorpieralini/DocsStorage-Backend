@@ -202,6 +202,7 @@ def google_callback():
 
 
     access_token = tokens.get('access_token')
+    refresh_token = tokens.get('refresh_token')
 
     if not access_token:
         return {"success": False, "message": "Token de acesso não recebido do Google", "tokens": tokens}, 502
@@ -237,17 +238,30 @@ def google_callback():
             username = f"{base_username}{suffix}"
             suffix += 1
 
-        user = User(username=username, email=email, google_id=google_id, profile_picture=picture)
+        user = User(
+            username=username, 
+            email=email, 
+            google_id=google_id, 
+            profile_picture=picture,
+            google_access_token=access_token,
+            google_refresh_token=refresh_token
+        )
         db.session.add(user)
         db.session.commit()
     else:
-        # Atualiza foto e google_id se mudou
+        # Atualiza foto, google_id e tokens se mudou
         updated = False
         if user.profile_picture != picture:
             user.profile_picture = picture
             updated = True
         if user.google_id != google_id:
             user.google_id = google_id
+            updated = True
+        if user.google_access_token != access_token:
+            user.google_access_token = access_token
+            updated = True
+        if refresh_token and user.google_refresh_token != refresh_token:
+            user.google_refresh_token = refresh_token
             updated = True
         if updated:
             db.session.commit()
