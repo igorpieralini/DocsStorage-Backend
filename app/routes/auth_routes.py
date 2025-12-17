@@ -4,6 +4,8 @@ from ..extensions import db
 import os
 import requests
 from flask_jwt_extended import create_access_token
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.services.email_service import send_email
 from app.services.auth_register_service import register_user
 from app.services.auth_login_service import authenticate_user
 
@@ -90,6 +92,64 @@ def login():
         "message": "Login realizado com sucesso",
         "user": {"id": user.id, "username": user.username, "email": user.email},
         "token": token
+    }, 200
+
+
+@auth_bp.put('/profile')
+@jwt_required()
+def update_profile():
+    """Atualiza nome/username e dispara email de notificação"""
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    username = (data.get('username') or '').strip()
+    photo_changed = bool(data.get('photo_changed'))
+
+    user = User.query.filter_by(id=int(user_id)).first()
+    if not user:
+        return {"success": False, "message": "Usuário não encontrado"}, 404
+
+    changed_fields = []
+
+    if username and username != user.username:
+        existing = User.query.filter(User.username == username, User.id != user.id).first()
+        if existing:
+            return {"success": False, "message": "Username já está em uso"}, 409
+        user.username = username
+        changed_fields.append('username')
+
+    if name and name != getattr(user, 'name', None):
+        try:
+            setattr(user, 'name', name)
+            changed_fields.append('nome')
+        except Exception:
+            pass
+
+    if photo_changed:
+        changed_fields.append('foto de perfil')
+
+    db.session.commit()
+
+    # envia email se houve alteração relevante
+    if changed_fields:
+        subject = 'Seu perfil foi atualizado'
+        body = (
+            "Olá,\n\n"
+            f"Detectamos uma atualização no seu perfil: {', '.join(changed_fields)}.\n"
+            "Se não foi você, revise sua conta e altere sua senha.\n\n"
+            "— Equipe DocsStorage"
+        )
+        send_email(user.email, subject, body)
+
+    return {
+        "success": True,
+        "message": "Perfil atualizado",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "name": getattr(user, 'name', None)
+        }
     }, 200
 
 

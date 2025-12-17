@@ -116,6 +116,29 @@ def download_file(filename):
         download_name=original_name
     )
 
+
+@file_bp.get('/download-by-path')
+@jwt_required()
+def download_by_path():
+    """Faz download informando path relativo e nome"""
+    user_id = get_jwt_identity()
+    relative_path = request.args.get('path', '')
+    name = request.args.get('name')
+    if not name:
+        return {"success": False, "message": "name é obrigatório"}, 400
+
+    try:
+        base_dir = StorageService.get_user_directory(user_id, relative_path)
+    except ValueError:
+        return {"success": False, "message": "Caminho inválido"}, 400
+
+    from pathlib import Path
+    file_path = Path(base_dir) / name
+    if not file_path.exists():
+        return {"success": False, "message": "Arquivo não encontrado"}, 404
+
+    return send_file(str(file_path), as_attachment=False, download_name=name)
+
 @file_bp.delete("/delete/<filename>")
 @jwt_required()
 def delete_file(filename):
