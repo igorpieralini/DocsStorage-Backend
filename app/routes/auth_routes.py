@@ -13,7 +13,6 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.post("/register")
 def register():
-    
     if not request.json:
         return {"success": False, "message": "Dados JSON são obrigatórios", "error_type": "no_data"}, 400
     
@@ -31,13 +30,13 @@ def register():
     return {
         "success": True,
         "message": "Conta criada com sucesso",
-        "user": {"id": user.id, "username": user.username, "email": user.email},
+        "user": user.to_dict(),
         "token": token
     }, 201
 
 @auth_bp.post("/login")
-
 def login():
+    """Rota de login com email e senha"""
     if not request.json:
         return {
             "success": False, 
@@ -49,48 +48,25 @@ def login():
     email = data.get("email", "").strip()
     password = data.get("password", "").strip()
     
+    # Usa o serviço de autenticação
+    user, error = authenticate_user(email, password)
     
-    if not email:
-        print("❌ Email vazio")
-        return {
-            "success": False, 
-            "message": "Email é obrigatório",
-            "error_type": "missing_email"
-        }, 400
+    if error:
+        # Determina o código de status baseado no erro
+        if "não encontrado" in error.lower():
+            return {"success": False, "message": error, "error_type": "user_not_found"}, 404
+        elif "senha" in error.lower():
+            return {"success": False, "message": error, "error_type": "invalid_password"}, 401
+        else:
+            return {"success": False, "message": error, "error_type": "validation_error"}, 400
     
-    if not password:
-        print("❌ Senha vazia")
-        return {
-            "success": False, 
-            "message": "Senha é obrigatória",
-            "error_type": "missing_password"
-        }, 400
-    
-    user = User.query.filter_by(email=email).first()
-
-    if not user:
-        print("❌ Usuário não encontrado no banco")
-        return {
-            "success": False, 
-            "message": f"Usuário com email '{email}' não foi encontrado",
-            "error_type": "user_not_found"
-        }, 404
-    
-    senha_ok = user.check_password(password)
-    
-    if not senha_ok:
-        return {
-            "success": False, 
-            "message": "Senha incorreta",
-            "error_type": "invalid_password"
-        }, 401
-    
+    # Gera token JWT
     token = create_access_token(identity=str(user.id))
     
     return {
         "success": True, 
         "message": "Login realizado com sucesso",
-        "user": {"id": user.id, "username": user.username, "email": user.email},
+        "user": user.to_dict(),
         "token": token
     }, 200
 
@@ -184,21 +160,33 @@ def google_callback():
         'grant_type': 'authorization_code'
     }
     
+    print(f"🔄 [Google Callback] Trocando código por token...")
+    print(f"   Client ID: {client_id[:20]}...")
+    print(f"   Redirect URI: {redirect_uri}")
 
     token_resp = requests.post(token_url, data=token_payload, timeout=10)
-    if token_resp.status_code == 400:
-
-        # Tenta extrair erro específico do Google
+    
+    # Trata erros do Google (400, 401, etc)
+    if token_resp.status_code != 200:
         try:
             err_json = token_resp.json()
-            if err_json.get('error') == 'invalid_grant':
-                # invalid_grant pode indicar code expirado/já usado ou redirect_uri incorreto
-                return {"success": False, "message": "Código expirado, já utilizado ou inválido. Faça login novamente."}, 400
+            error = err_json.get('error', 'unknown')
+            error_desc = err_json.get('error_description', 'Erro desconhecido')
+            print(f"❌ [Google Callback] Erro {token_resp.status_code}: {error} - {error_desc}")
+            
+            if error == 'invalid_grant':
+                return {"success": False, "message": "Código expirado ou já utilizado. Faça login novamente."}, 400
+            elif error == 'invalid_client':
+                return {"success": False, "message": "Client ID ou Secret inválido. Verifique as configurações."}, 401
+            elif error == 'redirect_uri_mismatch':
+                return {"success": False, "message": f"Redirect URI não corresponde ao configurado no Google Console: {redirect_uri}"}, 400
+            else:
+                return {"success": False, "message": f"Erro Google OAuth: {error_desc}"}, token_resp.status_code
         except Exception:
-            pass
+            return {"success": False, "message": f"Erro ao autenticar com Google (HTTP {token_resp.status_code})"}, token_resp.status_code
 
-    token_resp.raise_for_status()
     tokens = token_resp.json()
+    print(f"✅ [Google Callback] Token obtido com sucesso")
 
 
     access_token = tokens.get('access_token')
@@ -269,17 +257,13 @@ def google_callback():
     # Gera JWT
     access_jwt = create_access_token(identity=str(user.id))
 
-    response_dict = {
+    # Resposta com dados do usuário
+    user_data = user.to_dict()
+    user_data['picture'] = picture  # Adiciona a foto do Google na resposta
+
+    return {
         "success": True,
         "message": "Autenticação Google realizada com sucesso",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "picture": picture,
-            "profile_picture": picture
-        },
+        "user": user_data,
         "token": access_jwt
-    }
-    
-    return response_dict, 200
+    }, 200

@@ -22,8 +22,9 @@ def create_app():
     def index():
         return {"status": "ok", "message": "DocsStorage API"}
     
-    # Inicializa o storage ao iniciar a aplicação (cria pastas para todos os usuários)
+    # Cria as tabelas do banco de dados e inicializa o storage
     with app.app_context():
+        db.create_all()  # Cria as tabelas se não existirem
         StorageService.initialize_storage()
 
     return app

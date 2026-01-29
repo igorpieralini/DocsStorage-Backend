@@ -28,7 +28,7 @@ A modern RESTful API for document management with OAuth integration and cloud st
 
 ## ✨ Features
 
-- 🔐 **Multi-Auth System**: Traditional login + OAuth (Google & Microsoft)
+- 🔐 **Multi-Auth System**: Traditional login + Google OAuth
 - 📁 **Document Management**: Upload, download, organize files and folders
 - ☁️ **Cloud Integration**: Google Drive API integration
 - 👤 **User Management**: Profile, storage quotas, permissions
@@ -158,7 +158,6 @@ backend/
 | POST | `/api/auth/register` | Register new user | ❌ |
 | POST | `/api/auth/login` | Login with credentials | ❌ |
 | POST | `/api/auth/google-callback` | Google OAuth callback | ❌ |
-| POST | `/api/auth/microsoft/callback` | Microsoft OAuth callback | ❌ |
 
 ### File Management Endpoints
 
@@ -224,12 +223,6 @@ MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB per file
    - Create OAuth 2.0 credentials
    - Add to `.env`: `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
    - Add redirect URI: `http://localhost:4200/oauth/callback`
-
-2. **Microsoft OAuth**
-   - Visit [Azure Portal](https://portal.azure.com/)
-   - Register application
-   - Add API permissions: `User.Read`, `Files.ReadWrite.All`
-   - Add to `.env`: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID`
 
 ---
 
